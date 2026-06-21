@@ -10,6 +10,7 @@ import pandas as pd
 import requests
 
 from .ai_extractor import extract_jobs_from_markdown
+from .ats_fetcher import detect_and_fetch_from_ats
 from .storage import JobPosting, diff_and_update, load_db, save_db
 
 logger = logging.getLogger(__name__)
@@ -41,13 +42,22 @@ class JobScraper:
                 continue
 
             logger.info(f"Scraping {company} — {careerpage}")
-            html = self._fetch_html(careerpage)
-            if html is None:
-                continue
 
-            markdown = self._html_to_markdown(html)
-            fetched_jobs = extract_jobs_from_markdown(markdown, company, careerpage)
-            logger.info(f"  AI returned {len(fetched_jobs)} job(s)")
+            # Try ATS API first (faster and more reliable)
+            fetched_jobs = detect_and_fetch_from_ats(careerpage)
+            method = "ATS API"
+
+            if fetched_jobs is None:
+                # Fall back to HTML fetching + AI extraction
+                html = self._fetch_html(careerpage)
+                if html is None:
+                    continue
+
+                markdown = self._html_to_markdown(html)
+                fetched_jobs = extract_jobs_from_markdown(markdown, company, careerpage)
+                method = "HTML + AI"
+
+            logger.info(f"  [{method}] returned {len(fetched_jobs)} job(s)")
 
             new, closed, unchanged = diff_and_update(
                 self.db, company, category, fetched_jobs, today
