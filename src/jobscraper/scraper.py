@@ -152,7 +152,11 @@ class JobScraper:
             with sync_playwright() as p:
                 browser = p.chromium.launch()
                 page = browser.new_page()
-                page.goto(url, wait_until="networkidle", timeout=30_000)
+                # Use "load" instead of "networkidle" - faster and sufficient for most pages
+                # "networkidle" can timeout on pages with continuous network activity
+                page.goto(url, wait_until="load", timeout=20_000)
+                # Wait a moment for any dynamic content to render
+                page.wait_for_timeout(1000)
                 html = page.content()
                 browser.close()
                 return html
