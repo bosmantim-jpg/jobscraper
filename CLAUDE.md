@@ -111,15 +111,47 @@ flake8 src tests
 }
 ```
 
+## ATS API Support
+
+The scraper supports direct API integration with major Applicant Tracking Systems (ATS):
+
+**Supported ATS Systems:**
+- **Greenhouse** — URLs containing `greenhouse` or `boards.greenhouse.io`
+  - API: `https://boards.greenhouse.io/api/v1/boards/{company}/jobs`
+  - Fastest extraction (direct JSON API)
+
+- **Lever** — URLs containing `lever` (e.g., `company.lever.co`)
+  - API: `https://api.lever.co/v1/postings/{company}`
+  - Includes full job details and application URLs
+
+- **Workday** — URLs with `myworkdayjobs.com` (e.g., `company.wd5.myworkdayjobs.com`)
+  - API: `https://company.wd{instance}.myworkdayjobs.com/wday/cxs/{company}/en-US/jobs`
+  - Extracts jobs without browser rendering
+
+**Extraction Strategy:**
+1. **Check for ATS** — If URL matches known ATS pattern, use API directly
+2. **Use HTML+AI** — For custom career pages, fetch HTML and use Claude for extraction
+3. **Fallback** — If HTML too sparse, retry with Playwright browser rendering
+
+**Benefits of ATS APIs:**
+- No AI token usage (saves cost)
+- Faster extraction (direct JSON, no markdown conversion)
+- More reliable location/title parsing (structured data)
+- Works for hidden/JavaScript-rendered jobs
+
+**Current Analysis (companies.xlsx):**
+- 2 Workday companies
+- 1 Lever company
+- 153 custom career pages (use HTML+AI method)
+
 ## Important Notes
 
-- **HTML fetching**: Tries `requests` first; if the result is too sparse (<500 chars), retries with Playwright headless browser
-- **Markdown truncation**: Limited to 50,000 chars before API call to control token cost
-- **Model**: Uses `claude-haiku-4-5-20251001` (cheapest tier, suitable for structured extraction)
 - **Atomic writes**: Database writes to `.tmp` file then atomically replaced to prevent corruption
 - **companies.xlsx** is tracked in git — it's the source data
 - **jobs_db.json** should be tracked to see diff history across runs
 - **output/** directory is gitignored; contains dated Excel exports
+- **Markdown truncation**: Limited to 50,000 chars before API call to control token cost
+- **Model**: Uses `claude-haiku-4-5-20251001` (cheapest tier, suitable for structured extraction)
 
 ## Key Files for Modifications
 
