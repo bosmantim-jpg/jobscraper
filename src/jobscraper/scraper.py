@@ -32,8 +32,9 @@ class JobScraper:
         total_new = total_closed = total_unchanged = 0
 
         for row in companies:
-            company = row["company"]
-            careerpage = row["careerpage"]
+            company = row["Company"]
+            careerpage = row["Job / Career Pagina"]
+            category = row["Category"]
 
             if not careerpage or pd.isna(careerpage):
                 logger.warning(f"No career page for {company}, skipping")
@@ -49,7 +50,7 @@ class JobScraper:
             logger.info(f"  AI returned {len(fetched_jobs)} job(s)")
 
             new, closed, unchanged = diff_and_update(
-                self.db, company, row["category"], fetched_jobs, today
+                self.db, company, category, fetched_jobs, today
             )
             logger.info(f"  +{new} new, -{closed} closed, {unchanged} unchanged")
             total_new += new
