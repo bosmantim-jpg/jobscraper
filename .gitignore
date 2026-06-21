@@ -41,6 +41,7 @@ env/
 # Environment variables
 .env
 .env.local
+jobs_db.json.tmp
 
 # Test coverage
 .coverage
