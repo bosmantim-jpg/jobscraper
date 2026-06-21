@@ -90,14 +90,45 @@ class JobScraper:
         if html is None:
             return None
 
+        # Check if HTML is likely JavaScript-heavy (SPA)
+        is_spa = self._detect_spa(html)
+
+        if is_spa:
+            logger.info("  SPA detected, retrying with Playwright...")
+            html = self._fetch_with_playwright(url)
+
+        return html
+
+    def _detect_spa(self, html: str) -> bool:
+        """Detect if page is a Single Page Application (JS-heavy)."""
+        # Check for SPA indicators
+        spa_indicators = [
+            "window.__",  # React/Vue/Angular globals
+            "data-reactroot",  # React
+            "ng-app",  # Angular
+            "v-app",  # Vue
+            "ppConfig",  # Google Hiring Portal
+            "sfdcBase",  # Salesforce
+            "adobeDataLayer",  # Adobe analytics (often SPA)
+        ]
+
+        for indicator in spa_indicators:
+            if indicator in html:
+                return True
+
+        # Also check markdown content - if mostly JavaScript, it's likely SPA
         md_preview = markdownify.markdownify(html, strip=["script", "style"])
         content_length = len(md_preview.replace(" ", "").replace("\n", ""))
 
         if content_length < 500:
-            logger.info("  Sparse HTML detected, retrying with Playwright...")
-            html = self._fetch_with_playwright(url)
+            return True
 
-        return html
+        # Check ratio of JavaScript to meaningful content
+        js_content = html.count("<script")
+        if js_content > 10:  # Many script tags = likely SPA
+            return True
+
+        return False
 
     def _fetch_with_requests(self, url: str) -> Optional[str]:
         """Fetch HTML using requests library."""
@@ -131,9 +162,34 @@ class JobScraper:
 
     def _html_to_markdown(self, html: str) -> str:
         """Convert HTML to Markdown, truncating to control token cost."""
+        # Strip unnecessary elements but preserve job-related content
         md = markdownify.markdownify(
-            html, strip=["script", "style", "head"], heading_style="ATX"
+            html,
+            strip=["script", "style", "head", "nav", "footer"],
+            heading_style="ATX",
         )
+
+        # Remove common non-job content patterns
+        lines = md.split("\n")
+        filtered_lines = []
+        skip_sections = [
+            "cookie",
+            "analytics",
+            "advertisement",
+            "social media",
+            "follow us",
+        ]
+
+        for line in lines:
+            # Skip very long lines that are likely minified code
+            if len(line) > 500:
+                continue
+            # Skip lines matching common non-job patterns
+            if any(skip in line.lower() for skip in skip_sections):
+                continue
+            filtered_lines.append(line)
+
+        md = "\n".join(filtered_lines)
         return md[:50_000]
 
     def _export_excel(self, today: str) -> None:

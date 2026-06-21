@@ -47,16 +47,25 @@ def extract_jobs_from_markdown(
     client = anthropic.Anthropic()
 
     system_prompt = (
-        "You are a structured data extractor. Extract all job postings from the "
-        "careers page markdown content. Use the extract_jobs tool to return the "
-        "structured data. If there are no job postings, call the tool with an "
-        "empty list. Do not invent or guess job postings."
+        "You are a job posting extractor. Your task is to find and extract ALL job "
+        "postings from the provided career page content. \n\n"
+        "IMPORTANT: Look for ANY of these patterns:\n"
+        "- Job titles followed by location or 'Apply now' links\n"
+        "- Tables or lists with role names\n"
+        "- Job postings that mention responsibilities or requirements\n"
+        "- Positions marked with tags like [Open], [Hiring], or similar\n"
+        "- Even brief job listings (just title + link)\n\n"
+        "Extract ALL job postings you can find. Do not be conservative - include "
+        "any role that appears to be a job opening, even if incomplete details are "
+        "provided. Use the extract_jobs tool to return the data. Return an empty "
+        "list only if there are clearly NO job postings on the page."
     )
 
     user_prompt = (
         f"Company: {company_name}\n"
         f"Career page URL: {career_page_url}\n"
-        f"(Use this URL to resolve any relative links in the content.)\n\n"
+        f"(Resolve relative URLs using this base URL)\n\n"
+        f"Extract all job postings from this content:\n"
         f"{markdown}"
     )
 
